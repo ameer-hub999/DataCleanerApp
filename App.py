@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 
 st.set_page_config(
     page_title="Smart File AI - Platform",
@@ -6,45 +7,68 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 قراءة قائمة الإيميلات والأكواد المسموح لها بالدخول من الـ Secrets
-subscribers_list = st.secrets.get("ALLOWED_SUBSCRIBERS", [])
+# 🔗 ضع رابط منتجك على Gumroad هنا (permalink)
+# مثلاً لو رابط المنتج: https://gumroad.com/l/smartfileai -> يكون الـ permalink هو: smartfileai
+GUMROAD_PRODUCT_PERMALINK = "smartfileai" 
+GUMROAD_STORE_URL = "https://your-store.gumroad.com" # رابط متجرك للشراء
 
-def verify_user(email, key):
-    user_entry = f"{email.lower().strip()}:{key.strip()}"
-    allowed_entries = [sub.lower().strip() for sub in subscribers_list]
-    return user_entry in allowed_entries
+# 🔒 دالة التحقق الأوتوماتيكي المباشر من سيرفر Gumroad
+def verify_gumroad(email, license_key):
+    url = "https://api.gumroad.com/v2/licenses/verify"
+    payload = {
+        "product_permalink": GUMROAD_PRODUCT_PERMALINK,
+        "license_key": license_key.strip()
+    }
+    try:
+        res = requests.post(url, data=payload).json()
+        if res.get("success"):
+            purchase = res.get("purchase", {})
+            buyer_email = purchase.get("email", "").lower().strip()
+            is_cancelled = purchase.get("subscription_cancelled_at")
+            
+            # التأكد من مطابقة الإيميل وأن الاشتراك فعال وغير ملغي
+            if buyer_email == email.lower().strip() and not is_cancelled:
+                return True, "✅ تم تسجيل الدخول بنجاح!"
+            elif is_cancelled:
+                return False, "❌ هذا الاشتراك الشهري ملغي أو غير مسدد."
+            else:
+                return False, "⚠️ البريد الإلكتروني غير مطابق لإيميل الشراء."
+        return False, "❌ كود الاشتراك (License Key) غير صحيح."
+    except Exception as e:
+        return False, "⚠️ تعذر الاتصال بسيرفر التحقق، حاول مجدداً."
 
 # --- إدارة الجلسة في المتصفح ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# --- شاشة تسجيل الدخول (إذا لم يسجل الدخول بعد) ---
+# --- شاشة تسجيل الدخول الأوتوماتيكية ---
 if not st.session_state.authenticated:
     st.title("🔒 Login Required")
-    st.write("Please enter your registered email and license key to access the tools:")
+    st.write("Please enter your registered email and Gumroad License Key to access the platform:")
     
     col_a, col_b = st.columns(2)
     with col_a:
         user_email = st.text_input("Email Address (Used at checkout):")
     with col_b:
-        user_key = st.text_input("License Key:", type="password")
+        user_key = st.text_input("Gumroad License Key:", type="password")
     
     if st.button("Access Platform 🚀", type="primary"):
         if user_email and user_key:
-            if verify_user(user_email, user_key):
-                st.session_state.authenticated = True
-                st.session_state.user_email = user_email
-                st.success("✅ Login Successful!")
-                st.rerun()
-            else:
-                st.error("❌ Invalid Email or License Key.")
+            with st.spinner("Verifying subscription..."):
+                success, msg = verify_gumroad(user_email, user_key)
+                if success:
+                    st.session_state.authenticated = True
+                    st.session_state.user_email = user_email
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
         else:
             st.warning("⚠️ Please provide both Email and License Key.")
             
     st.markdown("---")
-    # 🔗 يمكنك تغيير هذا الرابط لرابط متجرك الحقيقي على Gumroad أو Etsy
-    st.markdown("👉 *Don't have a subscription?* [Get your License Key on Gumroad](https://your-store.gumroad.com)")
-    st.stop() # يوقف تحميل باقي الكود والتنسيقات حتى يسجل دخول
+    st.markdown(f"👉 *Don't have a subscription?* [Get your License Key on Gumroad]({GUMROAD_STORE_URL})")
+    st.stop() # يوقف تحميل باقي التطبيق حتى يسجل دخول
 
 # --- CUSTOM CSS STYLING FOR MODERN COLOR THEME ---
 st.markdown("""
