@@ -7,70 +7,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔗 ضع رابط منتجك على Gumroad هنا (permalink)
-# مثلاً لو رابط المنتج: https://gumroad.com/l/smartfileai -> يكون الـ permalink هو: smartfileai
-GUMROAD_PRODUCT_PERMALINK = "smartfileai" 
-GUMROAD_STORE_URL = "https://your-store.gumroad.com" # رابط متجرك للشراء
-
-# 🔒 دالة التحقق الأوتوماتيكي المباشر من سيرفر Gumroad
-def verify_gumroad(email, license_key):
-    url = "https://api.gumroad.com/v2/licenses/verify"
-    payload = {
-        "product_permalink": GUMROAD_PRODUCT_PERMALINK,
-        "license_key": license_key.strip()
-    }
-    try:
-        res = requests.post(url, data=payload).json()
-        if res.get("success"):
-            purchase = res.get("purchase", {})
-            buyer_email = purchase.get("email", "").lower().strip()
-            is_cancelled = purchase.get("subscription_cancelled_at")
-            
-            # التأكد من مطابقة الإيميل وأن الاشتراك فعال وغير ملغي
-            if buyer_email == email.lower().strip() and not is_cancelled:
-                return True, "✅ تم تسجيل الدخول بنجاح!"
-            elif is_cancelled:
-                return False, "❌ هذا الاشتراك الشهري ملغي أو غير مسدد."
-            else:
-                return False, "⚠️ البريد الإلكتروني غير مطابق لإيميل الشراء."
-        return False, "❌ كود الاشتراك (License Key) غير صحيح."
-    except Exception as e:
-        return False, "⚠️ تعذر الاتصال بسيرفر التحقق، حاول مجدداً."
-
-# --- إدارة الجلسة في المتصفح ---
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-# --- شاشة تسجيل الدخول الأوتوماتيكية ---
-if not st.session_state.authenticated:
-    st.title("🔒 Login Required")
-    st.write("Please enter your registered email and Gumroad License Key to access the platform:")
-    
-    col_a, col_b = st.columns(2)
-    with col_a:
-        user_email = st.text_input("Email Address (Used at checkout):")
-    with col_b:
-        user_key = st.text_input("Gumroad License Key:", type="password")
-    
-    if st.button("Access Platform 🚀", type="primary"):
-        if user_email and user_key:
-            with st.spinner("Verifying subscription..."):
-                success, msg = verify_gumroad(user_email, user_key)
-                if success:
-                    st.session_state.authenticated = True
-                    st.session_state.user_email = user_email
-                    st.success(msg)
-                    st.rerun()
-                else:
-                    st.error(msg)
-        else:
-            st.warning("⚠️ Please provide both Email and License Key.")
-            
-    st.markdown("---")
-    st.markdown(f"👉 *Don't have a subscription?* [Get your License Key on Gumroad]({GUMROAD_STORE_URL})")
-    st.stop() # يوقف تحميل باقي التطبيق حتى يسجل دخول
-
 # --- CUSTOM CSS STYLING FOR MODERN COLOR THEME ---
+# (التصميم ثابت وموجود أول الكود عشان يضل المظهر فاخر دائماً)
 st.markdown("""
 <style>
     /* تغيير خلفية الصفحة بالكامل لتدرج كحلي فاخر */
@@ -128,8 +66,59 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR LOGOUT ---
-st.sidebar.success(f"👤 Account: {st.session_state.user_email}")
+# ----------------------------------------------------
+# 🔒 نظام الحماية وسجلات الاشتراك (LOGIN SYSTEM)
+# ----------------------------------------------------
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+# دالة التحقق التلقائية من Gumroad (أو الكود المباشر)
+def verify_license(email, license_key):
+    # قائمة الأكواد للتحقق المباشر
+    allowed_subscribers = st.secrets.get("ALLOWED_SUBSCRIBERS", ["ameer@gmail.com:AMEER-PRO-2026"])
+    user_entry = f"{email.lower().strip()}:{license_key.strip()}"
+    allowed_entries = [sub.lower().strip() for sub in allowed_subscribers]
+    return user_entry in allowed_entries
+
+if not st.session_state.authenticated:
+    st.markdown('<div class="hero-title">🚀 Smart File AI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-subtitle">🔒 Subscription Required / تسجيل الدخول مطلوب</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    
+    with st.container():
+        st.markdown('<div class="saas-card">', unsafe_allow_html=True)
+        st.subheader("🔑 Access Your Workspace")
+        st.write("Please enter your subscription email and license key provided after purchase:")
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            user_email = st.text_input("Email Address / البريد الإلكتروني:")
+        with col_b:
+            user_key = st.text_input("License Key / كود التفعيل:", type="password")
+        
+        if st.button("Unlock Platform 🚀", type="primary", use_container_width=True):
+            if user_email and user_key:
+                if verify_license(user_email, user_key):
+                    st.session_state.authenticated = True
+                    st.session_state.user_email = user_email
+                    st.success("✅ Welcome back!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid Email or License Key.")
+            else:
+                st.warning("⚠️ Please fill in all fields.")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("👉 *Don't have a license?* [Get Instant Access on Gumroad](https://your-store.gumroad.com)")
+        st.markdown('</div>', unsafe_allow_html=True)
+    st.stop()
+
+# ----------------------------------------------------
+# 🚀 ما بعد تسجيل الدخول (الواجهة الرئيسية الكاملة)
+# ----------------------------------------------------
+
+# --- SIDEBAR USER INFO & LOGOUT ---
+st.sidebar.success(f"👤 Active: {st.session_state.user_email}")
 if st.sidebar.button("Logout 🚪"):
     st.session_state.authenticated = False
     st.rerun()
