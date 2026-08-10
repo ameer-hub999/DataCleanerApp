@@ -162,7 +162,7 @@ except Exception:
     pass
 
 if not api_key:
-    api_key = os.environ.get("GROQ_API_KEY", "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")
+    api_key = os.environ.get("GROQ_API_KEY")
 
 # 🔑 أكواد الاشتراك المقبولة
 valid_licenses = ["AMEER-PRO-2026", "VIP-PASS"]
