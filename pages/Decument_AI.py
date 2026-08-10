@@ -1,4 +1,11 @@
 import streamlit as st
+
+# 🔒 فحص حماية الجلسة: يمنع فتح الصفحة إلا بعد تسجيل الدخول من الصفحة الرئيسية
+if not st.session_state.get("authenticated", False):
+    st.error("🔒 Access Denied / يرجى تسجيل الدخول أولاً")
+    st.warning("⚠️ يرجى الذهاب إلى الصفحة الرئيسية (App) وتسجيل الدخول بحسابك لتتمكن من استخدام هذه الأداة.")
+    st.stop() # يوقف تحميل باقي الأداة تماماً
+
 import docx
 import pypdf
 import json
@@ -164,18 +171,6 @@ except Exception:
 if not api_key:
     api_key = os.environ.get("GROQ_API_KEY")
 
-# 🔑 أكواد الاشتراك المقبولة
-valid_licenses = ["AMEER-PRO-2026", "VIP-PASS"]
-try:
-    if "ALLOWED_LICENSES" in st.secrets:
-        valid_licenses = st.secrets["ALLOWED_LICENSES"]
-except Exception:
-    pass
-
-# 🛡️ إدخال كود الاشتراك في القائمة الجانبية
-st.sidebar.markdown("---")
-user_license = st.sidebar.text_input(t["license_label"], placeholder=t["license_placeholder"], type="password")
-
 uploaded_file = st.file_uploader("Upload Document (.docx, .pdf)", type=["docx", "pdf"])
 
 def convert_pdf_to_docx_bytes(pdf_bytes):
@@ -245,9 +240,7 @@ if uploaded_file is not None:
     st.success("Document uploaded successfully!")
 
     if st.button(t["btn_run"], type="primary"):
-        if user_license.strip() not in valid_licenses:
-            st.error(t["invalid_key"])
-        elif not api_key:
+        if not api_key:
             st.error(t["no_key_err"])
         else:
             with st.spinner("🤖 AI is analyzing your document... Please wait..."):
@@ -336,9 +329,9 @@ if st.session_state.doc_analysis is not None:
         for issue in list(issues):
             idx = issue["id"]
             with st.container():
-                st.markdown(f"### ❌ *{t['issue_found']}:* {issue.get('original', '')} ({issue.get('type', 'Error')})")
-                st.markdown(f"💡 *{t['explanation']}:* {issue.get('explanation', '')}")
-                st.markdown(f"✅ *{t['fix']}:* {issue.get('suggestion', '')}")
+                st.markdown(f"### ❌ {t['issue_found']}: {issue.get('original', '')} ({issue.get('type', 'Error')})")
+                st.markdown(f"💡 {t['explanation']}: {issue.get('explanation', '')}")
+                st.markdown(f"✅ {t['fix']}: {issue.get('suggestion', '')}")
                 
                 c1, c2, _ = st.columns([1, 1, 4])
                 
