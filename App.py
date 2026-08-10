@@ -1,5 +1,4 @@
 import streamlit as st
-import requests
 
 st.set_page_config(
     page_title="Smart File AI - Platform",
@@ -8,7 +7,6 @@ st.set_page_config(
 )
 
 # --- CUSTOM CSS STYLING FOR MODERN COLOR THEME ---
-# (التصميم ثابت وموجود أول الكود عشان يضل المظهر فاخر دائماً)
 st.markdown("""
 <style>
     /* تغيير خلفية الصفحة بالكامل لتدرج كحلي فاخر */
@@ -67,18 +65,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 🔒 نظام الحماية وسجلات الاشتراك (LOGIN SYSTEM)
+# 🔒 نظام الحماية الموحد
 # ----------------------------------------------------
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# دالة التحقق التلقائية من Gumroad (أو الكود المباشر)
-def verify_license(email, license_key):
-    # قائمة الأكواد للتحقق المباشر
-    allowed_subscribers = st.secrets.get("ALLOWED_SUBSCRIBERS", ["ameer@gmail.com:AMEER-PRO-2026"])
-    user_entry = f"{email.lower().strip()}:{license_key.strip()}"
-    allowed_entries = [sub.lower().strip() for sub in allowed_subscribers]
-    return user_entry in allowed_entries
+def verify_key(user_key):
+    # يجلب الأكواد المسموحة من قسم Secrets
+    allowed_keys = st.secrets.get("VALID_LICENSES", ["AMEER-PRO-2026"])
+    return user_key.strip() in allowed_keys
 
 if not st.session_state.authenticated:
     st.markdown('<div class="hero-title">🚀 Smart File AI</div>', unsafe_allow_html=True)
@@ -88,28 +83,21 @@ if not st.session_state.authenticated:
     with st.container():
         st.markdown('<div class="saas-card">', unsafe_allow_html=True)
         st.subheader("🔑 Access Your Workspace")
-        st.write("Please enter your subscription email and license key provided after purchase:")
+        st.write("Please enter your License Key provided after purchase:")
         
-        col_a, col_b = st.columns(2)
-        with col_a:
-            user_email = st.text_input("Email Address / البريد الإلكتروني:")
-        with col_b:
-            user_key = st.text_input("License Key / كود التفعيل:", type="password")
+        user_key = st.text_input("License Key / كود التفعيل:", type="password")
         
         if st.button("Unlock Platform 🚀", type="primary", use_container_width=True):
-            if user_email and user_key:
-                if verify_license(user_email, user_key):
+            if user_key:
+                if verify_key(user_key):
                     st.session_state.authenticated = True
-                    st.session_state.user_email = user_email
                     st.success("✅ Welcome back!")
                     st.rerun()
                 else:
-                    st.error("❌ Invalid Email or License Key.")
+                    st.error("❌ Invalid License Key.")
             else:
-                st.warning("⚠️ Please fill in all fields.")
+                st.warning("⚠️ Please enter your License Key.")
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("👉 *Don't have a license?* [Get Instant Access on Gumroad](https://your-store.gumroad.com)")
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -117,8 +105,7 @@ if not st.session_state.authenticated:
 # 🚀 ما بعد تسجيل الدخول (الواجهة الرئيسية الكاملة)
 # ----------------------------------------------------
 
-# --- SIDEBAR USER INFO & LOGOUT ---
-st.sidebar.success(f"👤 Active: {st.session_state.user_email}")
+st.sidebar.success("👤 Subscription Active")
 if st.sidebar.button("Logout 🚪"):
     st.session_state.authenticated = False
     st.rerun()
