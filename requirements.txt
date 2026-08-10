@@ -2,3 +2,9 @@ streamlit
 pandas
 openpyxl
 xlsxwriter
+pypdf
+google-genai
+requests
+pdf2docx
+groq
+python-docx
